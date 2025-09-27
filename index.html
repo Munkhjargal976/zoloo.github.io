@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<title>📊 Бараа материалын систем</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f7f7f7;}
+header { background:#4CAF50; color:white; padding:10px; text-align:center; font-size:20px; position:relative;}
+.logout { position:absolute; right:10px; top:10px; background:#e74c3c; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;}
+.logout:hover { opacity:0.8;}
+.container { display:flex; flex-wrap:wrap; gap:20px; padding:20px;}
+.card { background:white; padding:15px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1); flex:1; min-width:320px;}
+h3 { margin-top:0; }
+table { width:100%; border-collapse:collapse; margin-top:10px;}
+th, td { border:1px solid #ddd; padding:6px; text-align:center;}
+th { background:#eee; }
+button { padding:5px 10px; margin:2px; border:none; border-radius:5px; cursor:pointer;}
+button:hover { opacity:0.8;}
+input, select { padding:5px; margin:3px; }
+#loginCard { max-width:400px; margin:50px auto; }
+.hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  📊 Бараа материалын систем
+  <button id="logoutBtn" class="logout hidden" onclick="logout()">🚪 Гарах</button>
+</header>
+
+<!-- Нэвтрэх -->
+<div id="loginCard" class="card">
+  <h3>Нэвтрэх</h3>
+  <input id="username" placeholder="Нэр"><br>
+  <input id="password" placeholder="Код" type="password"><br>
+  <button onclick="login()">Нэвтрэх</button>
+</div>
+
+<div id="main" class="hidden">
+  <div class="container">
+    <!-- Хэрэглэгчийн хэсэг -->
+    <div id="userSection" class="card hidden">
+      <h3>Хэрэглэгчийн үлдэгдэл</h3>
+      <div id="userStock"></div>
+      <div id="transactionCard" class="hidden">
+        <h3>Орлого / Зарлага</h3>
+        <label>Эхлэх огноо:</label>
+        <input type="date" id="startDate" onchange="renderTransTable()">
+        <label>Дуусах огноо:</label>
+        <input type="date" id="endDate" onchange="renderTransTable()">
+        <label>Бараа:</label>
+        <select id="filterProduct" onchange="renderTransTable()">
+          <option value="">Бүгд</option>
+        </select>
+        <label>Харилцагч:</label>
+        <select id="filterCustomer" onchange="renderTransTable()">
+          <option value="">Бүгд</option>
+        </select>
+        <button onclick="clearFilters()">♻ Бүгдийг харах</button>
+        <button onclick="exportTransactions()">📥 Excel татах</button>
+        <table id="transTable">
+          <tr>
+            <th>№</th><th>Бараа</th><th>Үнэ</th><th>Орлого</th><th>Зарлага</th><th>Харилцагч</th><th>Тайлбар</th><th>Үлдэгдэл</th><th>Огноо</th><th>Үйлдэл</th>
+          </tr>
+        </table>
+        <button onclick="addRow()">➕ Мөр нэмэх</button>
+      </div>
+    </div>
+
+    <!-- Админ хэсэг -->
+    <div id="adminSection" class="card hidden">
+      <h3>Админ - Хяналт</h3>
+      <button onclick="toggleCard('userMng')">👤 Хэрэглэгчийн бүртгэл</button>
+      <button onclick="toggleCard('catMng')">📂 Ангилал</button>
+      <button onclick="toggleCard('prodMng')">📦 Бараа</button>
+      <button onclick="toggleCard('custMng')">🤝 Харилцагч</button>
+      <div id="userMng" class="hidden"></div>
+      <div id="catMng" class="hidden"></div>
+      <div id="prodMng" class="hidden"></div>
+      <div id="custMng" class="hidden"></div>
+      <h3>📊 Үлдэгдэл (Ангиллаар)</h3>
+      <div id="adminStock"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// -------- Data --------
+let users={
+  "ankhaa":{code:"1111",assigned:["Өөх мах"]},
+  "amgaa":{code:"2222",assigned:["Газ"]},
+  "admin":{code:"0000"}
+};
+let categories=["Өөх мах","Газ","Аяга","Ус ундаа"];
+let products=[
+  {name:"Гадар өөх",category:"Өөх мах",price:11000,initialStock:2000},
+  {name:"Шингэн хий",category:"Газ",price:50000,initialStock:0},
+  {name:"Шилэн аяга",category:"Аяга",price:3500,initialStock:0},
+  {name:"Кока кола",category:"Ус ундаа",price:2500,initialStock:0}
+];
+let customers=["Туяа","Энхээ","Бат"];
+let transactions=[]; 
+let currentUser="";
+
+// -------- LocalStorage --------
+function saveData(){
+  localStorage.setItem("users",JSON.stringify(users));
+  localStorage.setItem("categories",JSON.stringify(categories));
+  localStorage.setItem("products",JSON.stringify(products));
+  localStorage.setItem("transactions",JSON.stringify(transactions));
+  localStorage.setItem("customers",JSON.stringify(customers));
+}
+function loadData(){
+  if(localStorage.getItem("users")) users=JSON.parse(localStorage.getItem("users"));
+  if(localStorage.getItem("categories")) categories=JSON.parse(localStorage.getItem("categories"));
+  if(localStorage.getItem("products")) products=JSON.parse(localStorage.getItem("products"));
+  if(localStorage.getItem("transactions")) transactions=JSON.parse(localStorage.getItem("transactions"));
+  if(localStorage.getItem("customers")) customers=JSON.parse(localStorage.getItem("customers"));
+}
+loadData();
+
+// -------- Login --------
+function login(){
+  let u=document.getElementById("username").value.trim();
+  let p=document.getElementById("password").value.trim();
+  if(users[u] && users[u].code===p){
+    currentUser=u;
+    document.getElementById("loginCard").classList.add("hidden");
+    document.getElementById("main").classList.remove("hidden");
+    document.getElementById("logoutBtn").classList.remove("hidden");
+    if(u==="admin"){ 
+      document.getElementById("adminSection").classList.remove("hidden");
+      document.getElementById("userSection").classList.add("hidden");
+      renderAdmin(); 
+    }
+    else { 
+      document.getElementById("userSection").classList.remove("hidden");
+      document.getElementById("adminSection").classList.add("hidden");
+      renderUser();
+    }
+  } else alert("Буруу нэр эсвэл код");
+}
+function logout(){
+  currentUser="";
+  document.getElementById("loginCard").classList.remove("hidden");
+  document.getElementById("main").classList.add("hidden");
+  document.getElementById("logoutBtn").classList.add("hidden");
+}
+
+// -------- User Section --------
+function renderUser(){
+  let d=document.getElementById("userStock"); d.innerHTML="";
+  let allowed=users[currentUser].assigned||[];
+  products.filter(p=>allowed.includes(p.category)).forEach(p=>{
+    let div=document.createElement("div");
+    div.innerHTML=`<b>${p.name}</b> → Үлдэгдэл: ${calcStock(currentUser,p)} (${p.price}₮)`;
+    d.appendChild(div);
+  });
+  let sel=document.getElementById("filterProduct");
+  sel.innerHTML="<option value=''>Бүгд</option>";
+  products.filter(p=>allowed.includes(p.category)).forEach(p=>{
+    let o=document.createElement("option");
+    o.value=p.name; o.innerText=p.name;
+    sel.appendChild(o);
+  });
+  let csel=document.getElementById("filterCustomer");
+  csel.innerHTML="<option value=''>Бүгд</option>";
+  customers.forEach(c=>{
+    let o=document.createElement("option");
+    o.value=c; o.innerText=c;
+    csel.appendChild(o);
+  });
+  document.getElementById("transactionCard").classList.remove("hidden");
+  renderTransTable();
+}
+
+// -------- Stock Calculation --------
+function calcStock(user,product){
+  let base=product.initialStock||0;
+  transactions
+    .filter(t=>t.user===user && t.product===product.name)
+    .forEach(t=>{
+      base+=t.income;
+      base-=t.expense;
+    });
+  return base;
+}
+
+// -------- Transaction Table --------
+function renderTransTable(){
+  let t=document.getElementById("transTable");
+  while(t.rows.length>1) t.deleteRow(1);
+
+  let start=document.getElementById("startDate")?.value || "";
+  let end=document.getElementById("endDate")?.value || "";
+  let prodFilter=document.getElementById("filterProduct")?.value || "";
+  let custFilter=document.getElementById("filterCustomer")?.value || "";
+
+  let filtered=transactions.filter(x=>x.user===currentUser);
+  if(start) filtered=filtered.filter(x=>x.date >= start);
+  if(end)   filtered=filtered.filter(x=>x.date <= end);
+  if(prodFilter) filtered=filtered.filter(x=>x.product===prodFilter);
+  if(custFilter) filtered=filtered.filter(x=>x.customer===custFilter);
+
+  filtered.sort((a,b)=> a.date.localeCompare(b.date));
+  if(filtered.length===0) return;
+
+  let stockMap={};
+  filtered.forEach((x,i)=>{
+    let prod=products.find(p=>p.name===x.product);
+    if(!stockMap[x.product]) stockMap[x.product]=prod?.initialStock||0;
+    stockMap[x.product]+=x.income;
+    stockMap[x.product]-=x.expense;
+
+    let r=t.insertRow();
+    r.insertCell(0).innerText=i+1;
+
+    if(!x.saved){ // хадгалаагүй мөр
+      r.insertCell(1).innerHTML=`<select onchange="updateTrans(${x.id},'product',this.value)">
+        ${products.map(p=>`<option value="${p.name}" ${x.product===p.name?"selected":""}>${p.name}</option>`).join("")}
+      </select>`;
+      r.insertCell(2).innerHTML=`<input type="number" value="${prod?.price||0}" onchange="updatePrice('${x.product}',this.value)">`;
+      r.insertCell(3).innerHTML=`<input type="number" value="${x.income}" onchange="updateTrans(${x.id},'income',this.value)">`;
+      r.insertCell(4).innerHTML=`<input type="number" value="${x.expense}" onchange="updateTrans(${x.id},'expense',this.value)">`;
+      r.insertCell(5).innerHTML=`<select onchange="updateTrans(${x.id},'customer',this.value)">
+        <option value="">---</option>
+        ${customers.map(c=>`<option value="${c}" ${x.customer===c?"selected":""}>${c}</option>`).join("")}
+      </select>`;
+      r.insertCell(6).innerHTML=`<input type="text" value="${x.note||""}" onchange="updateTrans(${x.id},'note',this.value)">`;
+      r.insertCell(7).innerText=stockMap[x.product];
+      r.insertCell(8).innerHTML=`<input type="date" value="${x.date}" onchange="updateTrans(${x.id},'date',this.value)">`;
+      r.insertCell(9).innerHTML=`<button onclick="saveRow(${x.id})">💾 Хадгалах</button><button onclick="delTrans(${x.id})">❌</button>`;
+    } else { // хадгалсан мөр
+      r.insertCell(1).innerText=x.product;
+      r.insertCell(2).innerText=prod?.price||0;
+      r.insertCell(3).innerText=x.income;
+      r.insertCell(4).innerText=x.expense;
+      r.insertCell(5).innerText=x.customer||"---";
+      r.insertCell(6).innerText=x.note||"";
+      r.insertCell(7).innerText=stockMap[x.product];
+      r.insertCell(8).innerText=x.date;
+      r.insertCell(9).innerHTML=`<button onclick="editRow(${x.id})">✏️ Засах</button>
+                                 <button onclick="delTrans(${x.id})">❌</button>`;
+    }
+  });
+}
+
+function addRow(){
+  let allowed=users[currentUser].assigned||[];
+  let prod=products.find(p=>allowed.includes(p.category));
+  if(!prod) return alert("Бараа алга");
+  let id=Date.now();
+  transactions.push({
+    id,user:currentUser,
+    product:prod.name,income:0,expense:0,note:"",customer:"",
+    date:new Date().toISOString().slice(0,10),
+    saved:false
+  });
+  renderTransTable();
+}
+
+function saveRow(id){
+  let t=transactions.find(x=>x.id===id);
+  if(t){
+    let prod=products.find(p=>p.name===t.product);
+    let stock=calcStock(currentUser,prod);
+    if(t.expense > stock){
+      alert("❌ Үлдэгдэл хүрэлцэхгүй байна!");
+      return;
+    }
+    t.saved=true;
+    saveData();
+    renderTransTable(); renderUser(); renderAdmin();
+  }
+}
+function editRow(id){
+  let t=transactions.find(x=>x.id===id);
+  if(t){ t.saved=false; renderTransTable(); }
+}
+function updateTrans(id,key,val){
+  let t=transactions.find(x=>x.id===id);
+  if(t){ t[key]= key==="income"||key==="expense"?parseFloat(val)||0:val; }
+}
+function delTrans(id){
+  if(confirm("Энэ мөрийг устгах уу?")){
+    transactions=transactions.filter(t=>t.id!==id);
+    saveData(); renderTransTable(); renderUser(); renderAdmin();
+  }
+}
+function clearFilters(){
+  document.getElementById("startDate").value="";
+  document.getElementById("endDate").value="";
+  document.getElementById("filterProduct").value="";
+  document.getElementById("filterCustomer").value="";
+  renderTransTable();
+}
+function updatePrice(productName,newPrice){
+  let p=products.find(x=>x.name===productName);
+  if(p){ p.price=parseFloat(newPrice)||0; saveData(); renderUser(); renderAdmin(); }
+}
+
+// -------- Excel Export --------
+function exportTransactions(){
+  let data = transactions.map(t=>({
+    Огноо: t.date,
+    Бараа: t.product,
+    Харилцагч: t.customer || "",
+    Орлого: t.income,
+    Зарлага: t.expense,
+    Үнэ: products.find(p=>p.name===t.product)?.price || 0,
+    Нийт: (t.income - t.expense) * (products.find(p=>p.name===t.product)?.price || 0)
+  }));
+  let ws = XLSX.utils.json_to_sheet(data);
+  let wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Transactions");
+  XLSX.writeFile(wb, "transactions.xlsx");
+}
+
+// -------- Admin Section --------
+function renderAdmin(){
+  renderUserTable();
+  renderCatTable();
+  renderProdTable();
+  renderCustTable();
+  renderAdminStock();
+}
+function toggleCard(id){ document.getElementById(id).classList.toggle("hidden"); }
+
+// 👤 Хэрэглэгч
+function renderUserTable(){
+  let d=document.getElementById("userMng"); d.innerHTML="";
+  let t=document.createElement("table");
+  t.innerHTML="<tr><th>Нэр</th><th>Код</th><th>Ангилал</th><th>Үйлдэл</th></tr>";
+  for(let u in users){
+    if(u==="admin") continue;
+    let r=t.insertRow();
+    r.insertCell(0).innerText=u;
+    r.insertCell(1).innerText=users[u].code;
+    r.insertCell(2).innerText=(users[u].assigned||[]).join(",");
+    r.insertCell(3).innerHTML=`<button onclick="editUser('${u}')">✏️</button><button onclick="delUser('${u}')">❌</button>`;
+  }
+  d.appendChild(t);
+  d.innerHTML+=`<button onclick="addUser()">➕ Хэрэглэгч нэмэх</button>`;
+}
+function addUser(){
+  let uname=prompt("Хэрэглэгчийн нэр:"); if(!uname) return;
+  let code=prompt("Нэвтрэх код:");
+  let cats=prompt("Ангилал (таслалаар):");
+  users[uname]={code:code,assigned:cats.split(",")};
+  saveData(); renderUserTable();
+}
+function editUser(u){
+  let newCode=prompt("Шинэ код:",users[u].code);
+  let newCat=prompt("Ангилал (таслалаар):",users[u].assigned.join(","));
+  users[u].code=newCode; users[u].assigned=newCat.split(",");
+  saveData(); renderUserTable(); renderAdminStock();
+}
+function delUser(u){
+  if(confirm("Устгах уу?")){ delete users[u]; saveData(); renderUserTable(); renderAdminStock(); }
+}
+
+// 📂 Ангилал
+function renderCatTable(){
+  let d=document.getElementById("catMng"); d.innerHTML="";
+  let t=document.createElement("table");
+  t.innerHTML="<tr><th>Ангилал</th><th>Үйлдэл</th></tr>";
+  categories.forEach((c,i)=>{
+    let r=t.insertRow();
+    r.insertCell(0).innerText=c;
+    r.insertCell(1).innerHTML=`<button onclick="editCat(${i})">✏️</button><button onclick="delCat(${i})">❌</button>`;
+  });
+  d.appendChild(t);
+  d.innerHTML+=`<button onclick="addCat()">➕ Ангилал нэмэх</button>`;
+}
+function addCat(){
+  let cname=prompt("Ангилалын нэр:"); if(cname){ categories.push(cname); saveData(); renderCatTable(); renderAdminStock(); }
+}
+function editCat(i){
+  let newName=prompt("Шинэ нэр:",categories[i]); if(newName){ categories[i]=newName; saveData(); renderCatTable(); renderAdminStock(); }
+}
+function delCat(i){
+  if(confirm("Устгах уу?")){ categories.splice(i,1); saveData(); renderCatTable(); renderAdminStock(); }
+}
+
+// 📦 Бараа
+function renderProdTable(){
+  let d=document.getElementById("prodMng"); d.innerHTML="";
+  let t=document.createElement("table");
+  t.innerHTML="<tr><th>Нэр</th><th>Ангилал</th><th>Үнэ</th><th>Эхний үлдэгдэл</th><th>Үйлдэл</th></tr>";
+  products.forEach((p,i)=>{
+    let r=t.insertRow();
+    if(p.editing){
+      r.insertCell(0).innerHTML=`<input value="${p.name}" onchange="products[${i}].name=this.value">`;
+      r.insertCell(1).innerHTML=`<input value="${p.category}" onchange="products[${i}].category=this.value">`;
+      r.insertCell(2).innerHTML=`<input type="number" value="${p.price}" onchange="products[${i}].price=parseFloat(this.value)||0">`;
+      r.insertCell(3).innerHTML=`<input type="number" value="${p.initialStock}" onchange="products[${i}].initialStock=parseFloat(this.value)||0">`;
+      r.insertCell(4).innerHTML=`<button onclick="saveProd(${i})">💾 Хадгалах</button><button onclick="cancelEditProd(${i})">↩ Цуцлах</button>`;
+    } else {
+      r.insertCell(0).innerText=p.name;
+      r.insertCell(1).innerText=p.category;
+      r.insertCell(2).innerText=p.price;
+      r.insertCell(3).innerText=p.initialStock;
+      r.insertCell(4).innerHTML=`<button onclick="editProd(${i})">✏️ Засах</button><button onclick="delProd(${i})">❌</button>`;
+    }
+  });
+  d.appendChild(t);
+  d.innerHTML+=`<button onclick="addProd()">➕ Бараа нэмэх</button>`;
+}
+function addProd(){
+  let pname=prompt("Барааны нэр:"); let pcat=prompt("Ангилал:",categories.join(","));
+  let pprice=parseFloat(prompt("Үнэ:"))||0; let pstock=parseFloat(prompt("Эхний үлдэгдэл:"))||0;
+  if(pname && pcat){ products.push({name:pname,category:pcat,price:pprice,initialStock:pstock}); saveData(); renderProdTable(); renderAdminStock(); }
+}
+function editProd(i){ products[i].editing=true; renderProdTable(); }
+function saveProd(i){ delete products[i].editing; saveData(); renderProdTable(); renderAdminStock(); }
+function cancelEditProd(i){ delete products[i].editing; renderProdTable(); }
+function delProd(i){
+  if(confirm("Устгах уу?")){ products.splice(i,1); saveData(); renderProdTable(); renderAdminStock(); }
+}
+
+// 🤝 Харилцагч
+function renderCustTable(){
+  let d=document.getElementById("custMng"); d.innerHTML="";
+  let t=document.createElement("table");
+  t.innerHTML="<tr><th>Харилцагч</th><th>Үйлдэл</th></tr>";
+  customers.forEach((c,i)=>{
+    let r=t.insertRow();
+    r.insertCell(0).innerText=c;
+    r.insertCell(1).innerHTML=`<button onclick="editCust(${i})">✏️</button><button onclick="delCust(${i})">❌</button>`;
+  });
+  d.appendChild(t);
+  d.innerHTML+=`<button onclick="addCust()">➕ Харилцагч нэмэх</button>`;
+}
+function addCust(){
+  let cname=prompt("Харилцагчийн нэр:"); if(cname){ customers.push(cname); saveData(); renderCustTable(); }
+}
+function editCust(i){
+  let newName=prompt("Шинэ нэр:",customers[i]); if(newName){ customers[i]=newName; saveData(); renderCustTable(); }
+}
+function delCust(i){
+  if(confirm("Устгах уу?")){ customers.splice(i,1); saveData(); renderCustTable(); }
+}
+
+// 📊 Үлдэгдэл
+function renderAdminStock(){
+  let d=document.getElementById("adminStock"); d.innerHTML="";
+  categories.forEach(c=>{
+    let div=document.createElement("div"); div.innerHTML="<b>"+c+"</b><br>";
+    products.filter(p=>p.category===c).forEach(p=>{
+      let total=0;
+      for(let u in users){ if(u!=="admin" && (users[u].assigned||[]).includes(c)){ total+=calcStock(u,p); } }
+      div.innerHTML+=`${p.name}: ${total} (${p.price}₮)<br>`;
+    });
+    d.appendChild(div);
+  });
+}
+</script>
+</body>
+</html>

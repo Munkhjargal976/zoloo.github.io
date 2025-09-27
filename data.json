@@ -1,0 +1,16 @@
+{
+  "users": {
+    "ankhaa": { "code": "1111", "assigned": ["Өөх мах"] },
+    "amgaa": { "code": "2222", "assigned": ["Газ"] },
+    "admin": { "code": "0000" }
+  },
+  "categories": ["Өөх мах", "Газ", "Аяга", "Ус ундаа"],
+  "products": [
+    { "name": "Гадар өөх", "category": "Өөх мах", "price": 11000, "initialStock": 2000 },
+    { "name": "Шингэн хий", "category": "Газ", "price": 50000, "initialStock": 0 },
+    { "name": "Шилэн аяга", "category": "Аяга", "price": 3500, "initialStock": 0 },
+    { "name": "Кока кола", "category": "Ус ундаа", "price": 2500, "initialStock": 0 }
+  ],
+  "customers": ["Туяа", "Энхээ", "Бат"],
+  "transactions": []
+}

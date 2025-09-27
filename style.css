@@ -1,0 +1,15 @@
+body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f7f7f7;}
+header { background:#4CAF50; color:white; padding:10px; text-align:center; font-size:20px; position:relative;}
+.logout { position:absolute; right:10px; top:10px; background:#e74c3c; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;}
+.logout:hover { opacity:0.8;}
+.container { display:flex; flex-wrap:wrap; gap:20px; padding:20px;}
+.card { background:white; padding:15px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1); flex:1; min-width:320px;}
+h3 { margin-top:0; }
+table { width:100%; border-collapse:collapse; margin-top:10px;}
+th, td { border:1px solid #ddd; padding:6px; text-align:center;}
+th { background:#eee; }
+button { padding:5px 10px; margin:2px; border:none; border-radius:5px; cursor:pointer;}
+button:hover { opacity:0.8;}
+input, select { padding:5px; margin:3px; }
+#loginCard { max-width:400px; margin:50px auto; }
+.hidden { display:none; }
