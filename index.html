@@ -59,11 +59,14 @@ input, select { padding:5px; margin:3px; }
         <button onclick="clearFilters()">♻ Бүгдийг харах</button>
         <button onclick="exportTransactions()">📥 Excel татах</button>
         <table id="transTable">
-          <tr>
-            <th>№</th><th>Бараа</th><th>Үнэ</th><th>Орлого</th><th>Зарлага</th><th>Харилцагч</th><th>Тайлбар</th><th>Үлдэгдэл</th><th>Огноо</th><th>Үйлдэл</th>
-          </tr>
+        <tr>
+           <th>№</th><th>Бараа</th><th>Үнэ</th><th>Орлого</th><th>Зарлага</th><th>Харилцагч</th><th>Тайлбар</th><th>Үлдэгдэл</th><th>Огноо</th><th>Үйлдэл</th>
+        </tr>
         </table>
+        <h3>Нийт дүн</h3>
+        <div id="summary"></div>
         <button onclick="addRow()">➕ Мөр нэмэх</button>
+
       </div>
     </div>
 
