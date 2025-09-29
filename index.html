@@ -78,6 +78,11 @@ input, select { padding:5px; margin:3px; }
       <div id="catMng" class="hidden"></div>
       <div id="prodMng" class="hidden"></div>
       <div id="custMng" class="hidden"></div>
+      <h3>⚙ Нэмэлт тохиргоо</h3>
+      <button onclick="backupData()">💾 Backup татах</button>
+      <input type="file" id="restoreFile" onchange="restoreData(event)" style="display:none">
+      <button onclick="document.getElementById('restoreFile').click()">📂 Restore оруулах</button>
+
       <h3>📊 Үлдэгдэл (Ангиллаар)</h3>
       <div id="adminStock"></div>
     </div>
@@ -454,6 +459,38 @@ function renderAdminStock(){
     d.appendChild(div);
   });
 }
+  // -------- Backup / Restore --------
+function backupData(){
+  let allData = { users, categories, products, customers, transactions };
+  let blob = new Blob([JSON.stringify(allData,null,2)], {type:"application/json"});
+  let link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "backup.json";
+  link.click();
+}
+
+function restoreData(event){
+  let file = event.target.files[0];
+  if(!file) return;
+  let reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      let imported = JSON.parse(e.target.result);
+      users = imported.users || users;
+      categories = imported.categories || categories;
+      products = imported.products || products;
+      customers = imported.customers || customers;
+      transactions = imported.transactions || transactions;
+      saveData();
+      alert("✅ Backup сэргээгдлээ!");
+      renderAdmin(); renderUser();
+    }catch(err){
+      alert("❌ Алдаа: " + err);
+    }
+  };
+  reader.readAsText(file);
+}
+
 </script>
 </body>
 </html>
