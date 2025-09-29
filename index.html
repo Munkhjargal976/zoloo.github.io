@@ -493,6 +493,16 @@ function restoreData(event){
   };
   reader.readAsText(file);
 }
+  // ---- Summary ----
+let totalIncome = filtered.reduce((sum,t)=>sum+t.income,0);
+let totalExpense = filtered.reduce((sum,t)=>sum+t.expense,0);
+let summaryDiv = document.getElementById("summary");
+if(summaryDiv){
+  summaryDiv.innerHTML = `Орлого: <b>${totalIncome}</b> | 
+                          Зарлага: <b>${totalExpense}</b> | 
+                          Ашиг: <b>${totalIncome-totalExpense}</b>`;
+}
+
 
 </script>
 </body>
